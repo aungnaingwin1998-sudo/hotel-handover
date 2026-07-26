@@ -35,6 +35,7 @@ class Note(Base):
     id = Column(Integer, primary_key=True, nullable=False)
     shift_id = Column(Integer, ForeignKey("shifts.id", ondelete="CASCADE"), nullable=False)
     author_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    type = Column(String, nullable=False, server_default='general')  # general | summary
     content = Column(Text, nullable=False)
 
     acknowledged = Column(Boolean, nullable=False, server_default='False')
