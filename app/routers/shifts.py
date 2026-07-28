@@ -24,3 +24,10 @@ def start_shift(db: Session = Depends(get_db), current_user: models.Users = Depe
     db.refresh(new_shift)
 
     return new_shift
+
+@router.get("/current")
+def get_current_shift (db: Session = Depends(get_db),current_user: models.Users = Depends(oauth2.get_current_user)):
+    current_shift=db.query(models.Shift).filter(models.Shift.status=='open').first()
+    if  not current_shift:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="There is not shift opened yet")
+    return current_shift
