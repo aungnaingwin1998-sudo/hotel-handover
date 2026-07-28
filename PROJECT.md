@@ -84,19 +84,19 @@ hotel-handover/
 ├── requirements.txt
 ├── app/
 │   ├── __init__.py
-│   ├── main.py                 ✅ done (registration only wired in)
+│   ├── main.py                 ✅ done (users, auth, shifts, notes all wired in)
 │   ├── database.py             ✅ done
 │   ├── config.py               ✅ done
-│   ├── models.py                ✅ done (Users, Shift, Note)
-│   ├── schemas.py                ✅ UserCreate/UserOut done; UserLogin/Token unused leftovers
+│   ├── models.py                ✅ done (Users, Shift, Note incl. `type` field)
+│   ├── schemas.py                ✅ done (UserCreate/Out, UserLogin, Token, TokenData, NoteCreate)
 │   ├── utils.py                   ✅ done (password hashing)
 │   ├── oauth2.py                   ✅ done (JWT create/verify, wired in)
 │   └── routers/
 │       ├── __init__.py
 │       ├── auth.py                 ✅ done (login)
 │       ├── users.py                 ✅ done (register)
-│       ├── shifts.py                  ✅ done (start shift)
-│       └── notes.py                    ⬜ not started
+│       ├── shifts.py                  ✅ done (start shift, get current shift)
+│       └── notes.py                    🟡 written, not tested yet (create note)
 ```
 
 ## 7. Build Strategy: Piece by Piece
@@ -108,15 +108,13 @@ Instead of writing all routers at once, we build **one small piece at a time** a
 | 1 | Register user (`POST /users/`) | ✅ **Done, tested, committed** |
 | 2 | Login (`POST /login`, returns JWT) | ✅ **Done, tested, committed** |
 | 3 | Start shift (`POST /shifts/start`) | ✅ **Done, tested, committed** |
-| 4 | Get current shift (`GET /shifts/current`) | ⬜ Not started |
-| 5 | Create note (`POST /shifts/{id}/notes`) | ⬜ Not started |
+| 4 | Get current shift (`GET /shifts/current`) | ✅ **Done, tested, committed** |
+| 5 | Create note (`POST /notes/create`) | 🟡 Written, not tested yet |
 | 6 | Close shift (`POST /shifts/{id}/close`) | ⬜ Not started |
 | 7 | Shift history (`GET /shifts/history`) | ⬜ Not started |
 | 8 | Acknowledge note (`PATCH /notes/{id}/acknowledge`) | ⬜ Not started |
 
-**Important:** `schemas.py` only contains schemas for pieces already built (currently just `UserCreate`/`UserOut`, plus unused leftovers `UserLogin`/`Token` from the paused login attempt). Schemas for shifts and notes get added exactly when we build that piece — not before. Same philosophy for `main.py`'s `include_router()` calls — **`main.py` currently only includes `users.router`**, nothing else.
-
-**Note on paused login work:** `oauth2.py` has a full JWT create/verify implementation already written (reads `SECRET_KEY` from `.env` via `settings`, not hardcoded). `routers/auth.py` was never actually created as a file, so login is **not wired into `main.py` and cannot be tested yet**. This is safe — the unused code in `oauth2.py`/`schemas.py` doesn't affect the working app. Pick this up whenever ready by creating `routers/auth.py` (draft already given in chat history) and adding `auth.router` to `main.py`.
+**Important:** `schemas.py` and `main.py` now include everything through piece #5 (`NoteCreate` added, `notes.router` wired in). Schemas/routers for shift history and acknowledgment get added exactly when we build those pieces — not before.
 
 ## 8. Progress Log
 
@@ -147,21 +145,14 @@ Instead of writing all routers at once, we build **one small piece at a time** a
 | Piece #3 in progress | Writing `routers/shifts.py` — `start_shift` endpoint: blocks if a shift is already open, otherwise creates a new `Shift` row with `opened_by=current_user.id`. Wired into `main.py`. Discovered the `TokenData` bug above while testing this via `/docs` (first real use of `Depends(oauth2.get_current_user)`). |
 | **Piece #3 complete** | Tested via `/docs`: (1) happy path — starting a shift with none open succeeds, returns correct `opened_by`/`start_time`/`status`; (2) safeguard — attempting to start a second shift while one is open correctly fails with "A shift is already open." Both the success case and the failure/safeguard case were verified, not just the happy path. |
 | **Piece #3 committed** | Start shift endpoint committed and pushed to GitHub |
+| **Piece #4 complete** | Wrote `get_current_shift` in `routers/shifts.py` (`GET /shifts/current`). Caught two typos (`db.quey`→`db.query`, `.fitst()`→`.first()`) and a Python syntax bug (`return {current_shift}` created a **set**, which serialized as a JSON list `[...]` instead of a single object — fixed to `return current_shift`). Tested via `/docs`: returns the open shift as a single object; correctly returns `400 Bad Request` with "There is no shift opened yet" when none is open. |
+| **Piece #4 committed** | Get current shift endpoint committed and pushed to GitHub |
+| Process change | Switched to fully hands-on style for piece #5 — user wrote each part of `create_note` themselves (function signature, safeguard check, note creation), with guided review catching bugs (parameter ordering with defaults, wrong filter condition — checked for `status == "closed"` instead of confirming `status == "open"` exists, `models.notes` vs `models.Note` casing, `note(dict)` vs `note.dict()`, missing `shift_id`/`author_id` on the new Note, `retrun` typo). |
+| Piece #5 written, NOT YET TESTED | `routers/notes.py` created — `POST /notes/create` endpoint. Requires login; blocks with `400` if no shift is open; creates a `Note` with `shift_id`/`author_id` derived server-side (from current open shift + current_user), `type`/`content` from the request body (`type` defaults to `general`, constrained to `Literal["general", "summary"]` in `NoteCreate`). Wired into `main.py`. **Not yet run or tested in `/docs` — pick up here next session.** |
 
-## 9. Next Steps (pick up here)
+## 9. Next Steps
 
-**Resume Piece #2: Login** (whenever ready)
-
-1. Create `app/routers/auth.py` (draft content already exists — see chat history or ask to regenerate it)
-2. Add `auth.router` to `main.py`:
-   ```python
-   from .routers import users, auth
-   ...
-   app.include_router(auth.router)
-   ```
-3. Test in `/docs`: log in with the test user from piece #1, confirm a JWT token comes back (`access_token`, `token_type: "bearer"`)
-4. Commit: `"Piece 2: login endpoint (JWT), tested via /docs"`
-5. Once confirmed working → move to Piece #3 (Start shift)
+See Section 12 (Build Plan & Timeline) → "Where we stopped" for the current, up-to-date pickup point. (This section used to hold login resume-instructions from an earlier session; kept short now to avoid duplicate/stale info living in two places.)
 
 ## 10. Functional Requirements (FR)
 
@@ -226,8 +217,8 @@ Instead of writing all routers at once, we build **one small piece at a time** a
 | 1 | Register user | FR1–FR3, NFR1, NFR11 | 30–45 min | ✅ Done & committed |
 | 2 | Login | FR4–FR5, NFR2–NFR3 | 30–45 min | ✅ Done & committed |
 | 3 | Start shift | FR6–FR8, NFR5 | 45–60 min | ✅ Done & committed |
-| 4 | Get current shift | FR11, FR13 | 20–30 min | ⬜ Not started |
-| 5 | Create note | FR14–FR15, FR14a, NFR4 | 30–45 min | ⬜ Not started |
+| 4 | Get current shift | FR11, FR13 | 20–30 min | ✅ Done & committed |
+| 5 | Create note | FR14–FR15, FR14a, NFR4 | 30–45 min | 🟡 Written, not tested yet |
 | 6 | Close shift | FR9–FR10, FR19 (summary required) | 30–45 min | ⬜ Not started |
 | 7 | Shift history | FR12, FR18 | 30–45 min | ⬜ Not started |
 | 8 | Acknowledge note | FR16–FR17 | 20–30 min | ⬜ Not started |
@@ -247,3 +238,10 @@ Instead of writing all routers at once, we build **one small piece at a time** a
 | **Decision point** | Frontend (simple HTML/JS or React) vs. API-only portfolio vs. deploy (Render/Railway) — decide once backend is solid, not before | — |
 
 **Rule going forward:** don't check a row off in this table until it's (1) tested successfully in `/docs`, and (2) committed to git. If a session ends mid-piece, leave it marked ⏸️ Paused with a note in Section 8 (Progress Log) on exactly where it stopped — same as we did for login.
+
+**Where we stopped (pick up here next time):** Piece #5 (`create_note`) is fully written and wired into `main.py`, but has **not been run or tested yet**. Before testing:
+1. Make sure a shift is currently open (check via `GET /shifts/current` first — may need `POST /shifts/start` if none is open, since we've been testing on and off)
+2. Restart uvicorn, test `POST /notes/create` in `/docs` — try creating a `general` note first
+3. Test the failure case: try creating a note when **no shift is open** — should return `400` with "Cannot add a note — no shift is currently open"
+4. Also worth testing: does `type` actually default to `"general"` if omitted, and does the `Literal` constraint correctly reject an invalid type value?
+5. Once confirmed working → commit, update this doc, then move to Piece #6 (Close shift, including the mandatory summary-note check)
