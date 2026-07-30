@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from .. import models, schemas, utils
+from .. import models, schemas, utils,oauth2
 from ..database import get_db
 
 router = APIRouter(
@@ -27,3 +27,8 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
 
     return new_user
+
+
+@router.get("/me", response_model=schemas.UserOut)
+def view_me(current_user: models.Users = Depends(oauth2.get_current_user)):
+    return current_user
