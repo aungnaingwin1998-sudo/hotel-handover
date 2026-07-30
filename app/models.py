@@ -20,13 +20,14 @@ class Shift(Base):
     id = Column(Integer, primary_key=True, nullable=False)
     start_time = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
     end_time = Column(TIMESTAMP(timezone=True), nullable=True)
-    status = Column(String, nullable=False, server_default='open')  # open | closed
+    status = Column(String, nullable=False, server_default='open')
 
     opened_by = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     closed_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     opener = relationship("Users", foreign_keys=[opened_by])
     closer = relationship("Users", foreign_keys=[closed_by])
+    notes = relationship("Note", order_by="Note.created_at",back_populates="shift")
 
 
 class Note(Base):
@@ -44,6 +45,6 @@ class Note(Base):
 
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
 
-    shift = relationship("Shift")
+    shift = relationship("Shift",back_populates="notes")
     author = relationship("Users", foreign_keys=[author_id])
     acknowledger = relationship("Users", foreign_keys=[acknowledged_by])
