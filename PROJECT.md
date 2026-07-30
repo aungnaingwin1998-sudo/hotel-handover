@@ -22,6 +22,7 @@ A backend web app for hotel front desk staff to hand over information between sh
 - Task assignment system (follow-ups assigned to a specific person, tracked done/not done)
 - Automatic shift open/close based on system time (cron/scheduler)
 - Frontend UI (this phase is backend/API only)
+- **Shift scheduling/assignment (considered and deliberately deferred):** discussed whether the system should know who's *scheduled* to work a given shift in advance, vs. just whoever logs in and clicks "Start Shift." Since Aung's actual hotel schedule changes based on operational need (covering for sick coworkers, swaps, etc.), a rigid "only the scheduled person can act" system would work against real flexibility. Decision: v1 stays with "whoever's logged in can start/close/add notes to any shift" — no `role` column, no assignment logic. A purely informational (non-enforcing) roster/calendar could be a v2 idea if ever needed.
 
 ## 4. Tech Stack
 
@@ -88,7 +89,7 @@ hotel-handover/
 │   ├── database.py             ✅ done
 │   ├── config.py               ✅ done
 │   ├── models.py                ✅ done (Users, Shift, Note incl. `type` field)
-│   ├── schemas.py                ✅ done (UserCreate/Out, UserLogin, Token, TokenData, NoteCreate)
+│   ├── schemas.py                ✅ done (UserCreate/Out, UserLogin, Token, TokenData, NoteCreate, NoteOut, ShiftOut)
 │   ├── utils.py                   ✅ done (password hashing)
 │   ├── oauth2.py                   ✅ done (JWT create/verify, wired in)
 │   └── routers/
@@ -111,7 +112,7 @@ Instead of writing all routers at once, we build **one small piece at a time** a
 | 4 | Get current shift (`GET /shifts/current`) | ✅ **Done, tested, committed** |
 | 5 | Create note (`POST /notes/create`) | ✅ **Done, tested, committed** |
 | 6 | Close shift (`POST /shifts/close`) | ✅ **Done, tested, committed** |
-| 7 | Shift history (`GET /shifts/history`) | ⬜ Not started |
+| 7 | Shift history (`GET /shifts/history`) | ✅ **Done, tested, committed** — includes embedded notes |
 | 8 | Acknowledge note (`PATCH /notes/{id}/acknowledge`) | ⬜ Not started |
 
 **Important:** `schemas.py` and `main.py` now include everything through piece #6. Schemas/routers for shift history and acknowledgment get added exactly when we build those pieces — not before.
@@ -223,7 +224,7 @@ See Section 12 (Build Plan & Timeline) → "Where we stopped" for the current, u
 | 4 | Get current shift | FR11, FR13 | 20–30 min | ✅ Done & committed |
 | 5 | Create note | FR14–FR15, FR14a, NFR4 | 30–45 min | ✅ Done & committed |
 | 6 | Close shift | FR9–FR10, FR19 (summary required) | 30–45 min | ✅ Done & committed |
-| 7 | Shift history | FR12, FR18 | 30–45 min | ⬜ Not started |
+| 7 | Shift history | FR12, FR18 | 30–45 min | ✅ Done & committed |
 | 8 | Acknowledge note | FR16–FR17 | 20–30 min | ⬜ Not started |
 
 **Total estimated remaining time:** ~3.5–5.5 hours of active build time (spread across however many sessions fit your schedule — hotel shifts + MBA coursework come first).
@@ -242,7 +243,6 @@ See Section 12 (Build Plan & Timeline) → "Where we stopped" for the current, u
 
 **Rule going forward:** don't check a row off in this table until it's (1) tested successfully in `/docs`, and (2) committed to git. If a session ends mid-piece, leave it marked ⏸️ Paused with a note in Section 8 (Progress Log) on exactly where it stopped — same as we did for login.
 
-**Where we stopped (pick up here next time):** Pieces #1–6 are all written and genuinely tested via `/docs` with real request/response pairs (not assumed) — see Section 8 Progress Log for the full detail of each test case. **Still need to `git add . && git commit && git push` for pieces #5 and #6** — code is tested but not yet committed. Next up:
-1. Commit pieces #5 and #6 together (both were built and tested in the same session)
-2. **Piece #7 — Shift history** (`GET /shifts/history`): return past `closed` shifts, each with its notes embedded (FR12, FR18) — visually/structurally distinguish `summary` notes from `general` ones in the response
-3. **Piece #8 — Acknowledge note** (`PATCH /notes/{id}/acknowledge`): mark a note as acknowledged, recording `acknowledged_by` and `acknowledged_at` server-side (FR16–FR17, NFR4)
+**Where we stopped (pick up here next time):** Pieces #1–7 are all done, tested, and committed. Shift history now correctly embeds each shift's notes (via `Shift.notes` relationship + `ShiftOut`/`NoteOut` schemas + `response_model` on routes) — confirmed working via `/docs`. Only one piece remains:
+
+**Piece #8 — Acknowledge note** (`PATCH /notes/{id}/acknowledge`): mark a note as acknowledged, recording `acknowledged_by` (from `current_user`) and `acknowledged_at` (current timestamp) server-side (FR16–FR17, NFR4). Once this is built and tested, the v1 backend is fully complete — see Section 12's "After all 8 pieces are done" table for what comes next (full flow test, polish, frontend/deployment decision).
