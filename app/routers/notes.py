@@ -31,7 +31,7 @@ def create_note(note: schemas.NoteCreate, db: Session = Depends(get_db), current
 
 from datetime import datetime
 
-@router.patch("/{note_id}/acknowledge")
+@router.patch("/{note_id}/acknowledge", response_model=schemas.NoteOut)
 def acknowledge_note(note_id: int, db: Session = Depends(get_db), current_user: models.Users = Depends(oauth2.get_current_user)):
 
     note = db.query(models.Note).filter(models.Note.id == note_id).first()

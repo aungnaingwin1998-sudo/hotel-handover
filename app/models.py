@@ -22,12 +22,12 @@ class Shift(Base):
     end_time = Column(TIMESTAMP(timezone=True), nullable=True)
     status = Column(String, nullable=False, server_default='open')
 
-    opened_by = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    opened_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     closed_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     opener = relationship("Users", foreign_keys=[opened_by])
     closer = relationship("Users", foreign_keys=[closed_by])
-    notes = relationship("Note", order_by="Note.created_at",back_populates="shift")
+    notes = relationship("Note", order_by="Note.created_at", back_populates="shift")
 
 
 class Note(Base):
@@ -35,7 +35,7 @@ class Note(Base):
 
     id = Column(Integer, primary_key=True, nullable=False)
     shift_id = Column(Integer, ForeignKey("shifts.id", ondelete="CASCADE"), nullable=False)
-    author_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    author_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     type = Column(String, nullable=False, server_default='general')  # general | summary
     content = Column(Text, nullable=False)
 
@@ -45,6 +45,6 @@ class Note(Base):
 
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
 
-    shift = relationship("Shift",back_populates="notes")
+    shift = relationship("Shift", back_populates="notes")
     author = relationship("Users", foreign_keys=[author_id])
     acknowledger = relationship("Users", foreign_keys=[acknowledged_by])
