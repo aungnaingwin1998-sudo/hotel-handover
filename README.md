@@ -1,5 +1,11 @@
 # Hotel Front Desk Shift Handover
 
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-005571?logo=fastapi&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
+![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-D71F00?logo=sqlalchemy&logoColor=white)
+![JWT](https://img.shields.io/badge/Auth-JWT-000000?logo=jsonwebtokens&logoColor=white)
+
 A FastAPI backend for managing front desk shift handovers — agents open a 12-hour shift (9am–9pm / 9pm–9am), log notes during the shift, and close it so the next agent can review and acknowledge outstanding items.
 
 ## Status
